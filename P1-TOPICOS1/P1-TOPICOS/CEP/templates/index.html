@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale: 1.0">
+    <title>Resultados CEP - Simulado Prova 1</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        
+        <header>
+            <h1>Análise de Controle Estatístico de Processo (CEP)</h1>
+        </header>
+
+        <section id="q1_1">
+            <h2>Questão 1.1: Gráficos X-R e Estado de Controle</h2>
+            <div class="grid-charts">
+                <div class="card">
+                    <h3>Gráfico X-barra (Médias)</h3>
+                    <div class="chart-container">
+                        <img id="xChartImage" src="" alt="Carregando Gráfico X-barra..." />
+                    </div>
+                    <pre id="x-limits"></pre>
+                </div>
+                <div class="card">
+                    <h3>Gráfico R (Amplitudes)</h3>
+                    <div class="chart-container">
+                        <img id="rChartImage" src="" alt="Carregando Gráfico R..." />
+                    </div>
+                    <pre id="r-limits"></pre>
+                </div>
+            </div>
+            
+            <div class="card card-full" style="margin-top: 24px;">
+                <h3>Verificação de Controle</h3>
+                <p>O processo está: <strong id="control-status">...</strong></p>
+                <h4>Pontos Fora de Controle (X-barra):</h4>
+                <ul id="x-outliers"><li>Carregando...</li></ul>
+                <h4>Pontos Fora de Controle (R):</h4>
+                <ul id="r-outliers"><li>Carregando...</li></ul>
+            </div>
+        </section>
+
+        <section id="q1_2">
+            <h2>Questão 1.2: Regras de Western Electric</h2>
+            <div class="card card-full">
+                <h3>Violações Detectadas (Regras 1-4)</h3>
+                <ul id="we-violations"><li>Carregando...</li></ul>
+            </div>
+        </section>
+
+        <section id="q2_q3">
+            <div class="grid-data">
+                
+                <div class="card" id="q2">
+                    <h2>Questão 2: Análise de Capacidade</h2>
+                    <p>Média (X̄̄): <strong id="x-bar-bar" class="value"></strong> | Desvio Padrão (σ̂): <strong id="sigma-hat" class="value"></strong></p>
+                    <ul>
+                        <li>
+                            <strong>2.1) Yield para [4.92, 4.94]:</strong>
+                            <span id="q2-1" class="value"></span>
+                        </li>
+                        <li>
+                            <strong>2.2) Capacidade do Processo:</strong>
+                            Cp = <span id="q2-2-cp" class="value"></span>, 
+                            Cpk = <span id="q2-2-cpk" class="value"></span>
+                        </li>
+                        <li>
+                            <strong>2.3) Prob. de valores > 4.952:</strong>
+                            <span id="q2-3" class="value"></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card" id="q3">
+                    <h2>Questão 3: Probabilidade Binomial</h2>
+                    <p>Prob. item "aproveitado" (P): <strong id="q3-p" class="value"></strong></p>
+                    <p>
+                        <strong>Prob. de 8 ou mais (em 10):</strong>
+                        <span id="q3-prob" class="value status-ok"></span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        function formatOutliers(list) {
+            if (list.length === 0) return "<li>Nenhum ponto fora de controle.</li>";
+            return list.map(item => `<li>Amostra ${item[0]}: Valor = ${item[1].toFixed(4)}</li>`).join('');
+        }
+        function formatViolations(list) {
+            return list.map(item => `<li>${item}</li>`).join('');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/get_cep_results')
+                .then(response => response.json())
+                .then(results => {
+                    if (results.error) {
+                        alert("Erro ao calcular: " + results.error);
+                        return;
+                    }
+                    const q1_1 = results.q1_1;
+                    if (q1_1.x_chart_image) {
+                        document.getElementById('xChartImage').src = 'data:image/png;base64,' + q1_1.x_chart_image;
+                    }
+                    if (q1_1.r_chart_image) {
+                        document.getElementById('rChartImage').src = 'data:image/png;base64,' + q1_1.r_chart_image;
+                    }
+                    document.getElementById('x-limits').innerText = 
+                        `LSC = ${q1_1.x_chart_limits.LSC.toFixed(4)}\nLC  = ${q1_1.x_chart_limits.LC.toFixed(4)}\nLIC = ${q1_1.x_chart_limits.LIC.toFixed(4)}`;
+                    document.getElementById('r-limits').innerText = 
+                        `LSC = ${q1_1.r_chart_limits.LSC.toFixed(4)}\nLC  = ${q1_1.r_chart_limits.LC.toFixed(4)}\nLIC = ${q1_1.r_chart_limits.LIC.toFixed(4)}`;
+                    const statusEl = document.getElementById('control-status');
+                    if (q1_1.is_in_control) {
+                        statusEl.innerText = "SOB CONTROLE ESTATÍSTICO";
+                        statusEl.className = "status-ok";
+                    } else {
+                        statusEl.innerText = "FORA DE CONTROLE ESTATÍSTICO";
+                        statusEl.className = "status-nok";
+                    }
+                    document.getElementById('x-outliers').innerHTML = formatOutliers(q1_1.out_of_control_x);
+                    document.getElementById('r-outliers').innerHTML = formatOutliers(q1_1.out_of_control_r);
+                    const q1_2 = results.q1_2;
+                    document.getElementById('we-violations').innerHTML = formatViolations(q1_2.violations);
+                    const q2 = results.q2;
+                    document.getElementById('x-bar-bar').innerText = q2.X_bar_bar.toFixed(5);
+                    document.getElementById('sigma-hat').innerText = q2.sigma_hat.toFixed(5);
+                    document.getElementById('q2-1').innerText = `${(q2.q2_1_yield * 100).toFixed(4)} %`;
+                    document.getElementById('q2-2-cp').innerText = q2.q2_2_Cp.toFixed(4);
+                    document.getElementById('q2-2-cpk').innerText = q2.q2_2_Cpk.toFixed(4);
+                    document.getElementById('q2-3').innerText = `${(q2.q2_3_prob_above * 100).toFixed(4)} %`;
+                    if (q2.q2_2_Cp >= 1) document.getElementById('q2-2-cp').classList.add('status-ok');
+                    else document.getElementById('q2-2-cp').classList.add('status-nok');
+                    if (q2.q2_2_Cpk >= 1) document.getElementById('q2-2-cpk').classList.add('status-ok');
+                    else document.getElementById('q2-2-cpk').classList.add('status-nok');
+                    const q3 = results.q3;
+                    document.getElementById('q3-p').innerText = `${q3.p_good_item.toFixed(5)} (${(q3.p_good_item * 100).toFixed(2)}%)`;
+                    document.getElementById('q3-prob').innerText = `${q3.prob_at_least_8.toFixed(5)} (${(q3.prob_at_least_8 * 100).toFixed(2)}%)`;
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar dados:', error);
+                    alert('Não foi possível conectar ao servidor Python. Verifique se o "app.py" está em execução.');
+                });
+        });
+    </script>
+
+</body>
+</html>
